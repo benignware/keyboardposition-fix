@@ -11,8 +11,8 @@ This makes the UI inusable if the keyboard hides the focused element and also co
 
 The issue is described here...
 
-http://getbootstrap.com/getting-started/#support-fixed-position-keyboards
-http://stackoverflow.com/questions/7970389/ios-5-fixed-positioning-and-virtual-keyboard
+* http://getbootstrap.com/getting-started/#support-fixed-position-keyboards
+* http://stackoverflow.com/questions/7970389/ios-5-fixed-positioning-and-virtual-keyboard
 
 Fix
 -----------------
