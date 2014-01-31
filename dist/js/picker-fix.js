@@ -85,8 +85,6 @@
     
     // applies to ios <= 6
     
-    alert('ios fix');
-
     
     // TODO: dismiss keyboard on scroll
     // TODO: content gets hidden in overflow containers
@@ -137,8 +135,7 @@
     if (!isAndroid) return;
     
     // applies to android
-    alert('android fix');
-    
+
     // TODO: transition
 
     function resizeHandler(e) {
