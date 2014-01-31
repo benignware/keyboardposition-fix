@@ -16,7 +16,6 @@ The issue is described here:
 
 Fix
 -----------------
-The fix hooks in the focusin-event of the document. 
-It needs to be executed only once in a document's lifetime. 
+The fix hooks in the focusin-event of the document and transforms the position of the fixed parent container on iOS and the body of the document on android.
 
 In iOS7 the issue seems to be resolved and the fix is not applied.
