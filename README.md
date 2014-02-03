@@ -1,4 +1,4 @@
-picker-fix
+keyboard-position-fix
 ==========
 
 This fix addresses flawed virtual keyboard positioning within fixed elements on iOS6 and Android 
