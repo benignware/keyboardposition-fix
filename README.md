@@ -7,7 +7,7 @@ Issue
 -----
 
 When focusing input elements contained in fixed positioned elements that trigger the virtual keyboard, the screen isn't properly adjusted on iOS6 and Android. 
-This makes the UI inusable if the keyboard hides the focused element and also comes with adhoc position flickering.  
+This makes the UI inusable if the keyboard hides the focused element.  
 
 The issue is described here:
 
