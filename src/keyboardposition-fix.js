@@ -67,13 +67,8 @@
 
   function getOverflowContainer(elem) {
     while(elem = elem.parentNode) {
-      var value = elem.style.overflow;
-      elem.style.overflow = "";
       var overflow = getStyle(elem, 'overflow');
-      elem.style.overflow = value;
-      if (overflow == 'scroll' || overflow == 'auto') {
-        return elem;
-      }
+      if (overflow == 'scroll' || overflow == 'auto') return elem;
       if (elem == doc) break;
     }
     return null;
@@ -94,20 +89,7 @@
   }
   
   function getFixedParent(elem) {
-    while (elem.parentNode) {
-      var value = elem.style.position;
-      elem.style.position = '';
-      var position = getStyle(elem, "position");
-      elem.style.position = value;
-      if (position == 'absolute') {
-        //alert('absolute parent' + elem.className);
-        //return null;
-      }
-      if (position == 'fixed') {
-        return elem;
-      }
-      elem = elem.parentNode;
-    }
+    while (elem.parentNode) if (getStyle(elem, "position") == 'fixed') return elem; else elem = elem.parentNode; 
     return null;
   }
   
@@ -132,15 +114,19 @@
     function scrollHandler(e) {
       win.removeEventListener('scroll', scrollHandler);
       doc.removeEventListener('focusout', focusOutHandler);
-      //top = (scrollTop - doc.body.scrollTop) - overflowScrollTop;
+      var newScrollTop = doc.body.scrollTop;
+      
+      // use position: fixed
+      //top = (scrollTop - newScrollTop) - overflowScrollTop;
       //fixedParent.style.top = top + 'px';
       
-      top = doc.body.scrollTop + (scrollTop - doc.body.scrollTop) - overflowScrollTop;
+      // use position: absolute
+      top = newScrollTop + (scrollTop - newScrollTop) - overflowScrollTop;
       fixedParent.style.position = 'absolute';
       
       fixedParent.style.top = top + 'px'; 
       if (overflowContainer) {
-        overflowContainer.style.minHeight = overflowContainer.scrollHeight + "px";
+        overflowContainer.style.minHeight = (overflowContainer.scrollHeight + win.innerHeight) + "px";
       }
       doc.addEventListener('focusout', focusOutHandler);
     }
@@ -165,7 +151,6 @@
           overflowScrollTop = overflowContainer ? overflowContainer.scrollTop : 0;
         }
         focusedElement = e.target;
-        
         if (fixedParent) {
           win.removeEventListener('scroll', scrollHandler);
           win.addEventListener('scroll', scrollHandler);
