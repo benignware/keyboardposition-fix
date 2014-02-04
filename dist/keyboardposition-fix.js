@@ -4,13 +4,20 @@
    * fix for fixed position virtual keyboard position bug
    */
   
-  var isIOS6 = (function() {
+  var isIOS = (function() {
     if (/iP(hone|od|ad)/.test(navigator.platform)) {
-      var v = (navigator.appVersion).match(/OS (\d+)_(\d+)_?(\d+)?/);
-      var version = [parseInt(v[1], 10), parseInt(v[2], 10), parseInt(v[3] || 0, 10)];
-      if (version[0] <= 6) return true;
+      return true;
     }
     return false;
+  })();
+  
+  var iOSVersion = (function() {
+    if (isIOS) {
+      var v = (navigator.appVersion).match(/OS (\d+)_(\d+)_?(\d+)?/);
+      var version = [parseInt(v[1], 10), parseInt(v[2], 10), parseInt(v[3] || 0, 10)];
+      return version[0];
+    }
+    return null;
   })();
   
   
@@ -21,11 +28,13 @@
     return false;
   })();
   
-  if (!isIOS6 && !isAndroid) {
+  if (!isIOS && !isAndroid) {
     return;
   }
   
   // applies to iOS version <= 6 and android all versions
+  
+  
   
   // init variables
     
@@ -36,8 +45,10 @@
   var scrollTop = 0;
   var top = 0;
   var inputSelector = "textarea, input:not([type='hidden']):not([type='checkbox']):not([type='radio'])";
+  //inputSelector = "*";
   var win = window;
   var doc = document;
+  var focusOutTimeout = null;
   
   // shared utilities
   
@@ -53,26 +64,32 @@
   function getStyle(elem, styleName) {
     return win.getComputedStyle(elem, null).getPropertyValue(styleName);
   }
-  
+
   function getOverflowContainer(elem) {
-    while(elem) {
+    while(elem = elem.parentNode) {
       var overflow = getStyle(elem, 'overflow');
-      if (overflow == 'scroll' || overflow == 'auto') {
-        return elem;
-      }
-      elem = elem.parentNode;
+      if (overflow == 'scroll' || overflow == 'auto') return elem;
       if (elem == doc) break;
     }
     return null;
   }
   
-  function getFixedParent(elem) {
-    while (elem.parentNode) {
-      if (getStyle(elem, "position") == 'fixed') {
-        return elem;
-      }
-      elem = elem.parentNode;
+  function getPosition(elem){
+    var x = 0;
+    var y = 0;
+    while (true) {
+        x += elem.offsetLeft;
+        y += elem.offsetTop;
+        if (elem.offsetParent === null) {
+            break;
+        }
+        elem = elem.offsetParent;
     }
+    return {x: x, y: y};
+  }
+  
+  function getFixedParent(elem) {
+    while (elem.parentNode) if (getStyle(elem, "position") == 'fixed') return elem; else elem = elem.parentNode; 
     return null;
   }
   
@@ -81,27 +98,59 @@
 
   (function() {
     
-    if (!isIOS6) return;
+    if (!isIOS) return;
+     // applies to ios
     
-    // applies to ios <= 6
-    
+    if (iOSVersion > 6) return; 
+    // applies to ios <= 6 
     
     // TODO: dismiss keyboard on scroll
     // TODO: content gets hidden in overflow containers
-  
+    
+    var scrollDiff = 0;
+    var validatedHeight = 0;
+    var overflowScrollTop = 0;
+    
     function scrollHandler(e) {
-      top = scrollTop - doc.body.scrollTop + top;
-      fixedParent.style.WebkitTransform = 'translate(0, ' + top + 'px)';
       win.removeEventListener('scroll', scrollHandler);
       doc.removeEventListener('focusout', focusOutHandler);
+      var newScrollTop = doc.body.scrollTop;
+      
+      // use position: fixed
+      //top = (scrollTop - newScrollTop) - overflowScrollTop;
+      //fixedParent.style.top = top + 'px';
+      
+      // use position: absolute
+      top = newScrollTop + (scrollTop - newScrollTop) - overflowScrollTop;
+      fixedParent.style.position = 'absolute';
+      
+      fixedParent.style.top = top + 'px'; 
+      if (overflowContainer) {
+        overflowContainer.style.minHeight = (overflowContainer.scrollHeight + win.innerHeight) + "px";
+      }
       doc.addEventListener('focusout', focusOutHandler);
+    }
+    
+    
+    function resizeHandler(e) {
+      if (focusedElement) {
+        if (validatedHeight != window.innerHeight) {
+          var diff =  window.innerHeight - validatedHeight;
+          validatedHeight = window.innerHeight;
+          //focusedElement.blur();
+        }
+      }
     }
     
     function focusInHandler(e) {
       if (matchesSelector(e.target, inputSelector)) {
-        scrollTop = doc.body.scrollTop;
+        if (!focusedElement) {
+          scrollTop = doc.body.scrollTop;
+          fixedParent = getFixedParent(e.target);
+          overflowContainer = getOverflowContainer(e.target);
+          overflowScrollTop = overflowContainer ? overflowContainer.scrollTop : 0;
+        }
         focusedElement = e.target;
-        fixedParent = getFixedParent(focusedElement);
         if (fixedParent) {
           win.removeEventListener('scroll', scrollHandler);
           win.addEventListener('scroll', scrollHandler);
@@ -110,11 +159,22 @@
     }
     
     function focusOutHandler(e) {
-      win.setTimeout(function() {
+      win.clearTimeout(focusOutTimeout);
+      focusOutTimeout = win.setTimeout(function() {
         var activeElement = doc.activeElement;
         if (!matchesSelector(activeElement, inputSelector) || !isChildOf(activeElement, fixedParent)) {
+          focusedElement = null;
           top = 0;
-          fixedParent.style.WebkitTransform = '';
+          fixedParent.style.top = "";
+          fixedParent.style.position = "";
+          if (overflowContainer) {
+            overflowContainer.style.minHeight = "";
+            overflowContainer.style.overflow = '';
+            overflowContainer.scrollTop = overflowScrollTop;
+            overflowContainer = null;
+            overflowScrollTop = 0;
+          }
+          fixedParent.style.top = '';
           doc.removeEventListener('focusout', focusOutHandler);
           win.removeEventListener('scroll', scrollHandler);
         }
@@ -139,11 +199,11 @@
     // TODO: transition
 
     function resizeHandler(e) {
+      doc.removeEventListener('focusout', focusOutHandler);
       var pos = getPosition(focusedElement);
       var top = - pos.y + win.innerHeight - focusedElement.offsetHeight - win.innerHeight * 0.25;
+      top = Math.min(top, 0);
       doc.body.style.WebkitTransform = 'translate(0, ' + top + 'px)';
-      win.removeEventListener('resize', resizeHandler);
-      doc.removeEventListener('focusout', focusOutHandler);
       doc.addEventListener('focusout', focusOutHandler);
     }
     
@@ -159,7 +219,8 @@
     }
     
     function focusOutHandler(e) {
-      win.setTimeout(function() {
+      win.clearTimeout(focusOutTimeout);
+      focusOutTimeout = win.setTimeout(function() {
         var activeElement = doc.activeElement;
         if (!matchesSelector(activeElement, inputSelector) || !isChildOf(activeElement, fixedParent)) {
           doc.body.style.WebkitTransform = '';
