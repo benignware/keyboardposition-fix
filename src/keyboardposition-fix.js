@@ -48,6 +48,7 @@
   //inputSelector = "*";
   var win = window;
   var doc = document;
+  var focusOutTimeout = null;
   
   // shared utilities
   
@@ -129,84 +130,70 @@
     var overflowScrollTop = 0;
     
     function scrollHandler(e) {
-      
       win.removeEventListener('scroll', scrollHandler);
-      if (!focusedElement) return;
-      if (getStyle(focusedElement, 'position') == 'static') {
-        // top = scrollTop - doc.body.scrollTop + top;
-        // console.log('diff: ', scrollTop - doc.body.scrollTop, "top: ", parseFloat(getStyle(fixedParent, 'top')));
-        // fixedParent.style.top = top + 'px';
-        if (fixedParent && getStyle(fixedParent, 'position') == 'fixed') {
-          top = doc.body.scrollTop + (scrollTop - doc.body.scrollTop);
-          if (overflowContainer) {
-            overflowScrollTop = overflowContainer.scrollTop;
-            top-= overflowScrollTop;
-          }
-          fixedParent.style.position = 'absolute';
-          fixedParent.style.top = top + 'px';
-          if (overflowContainer) {
-            overflowContainer.style.height = (win.innerHeight + doc.body.scrollTop) + "px";
-          }
-        }
-
-        validatedHeight = window.innerHeight;
-        win.addEventListener('resize', resizeHandler);
-      }
-          
+      doc.removeEventListener('focusout', focusOutHandler);
+      //top = (scrollTop - doc.body.scrollTop) - overflowScrollTop;
+      //fixedParent.style.top = top + 'px';
       
+      top = doc.body.scrollTop + (scrollTop - doc.body.scrollTop) - overflowScrollTop;
+      fixedParent.style.position = 'absolute';
+      
+      fixedParent.style.top = top + 'px'; 
+      if (overflowContainer) {
+        overflowContainer.style.minHeight = overflowContainer.scrollHeight + "px";
+      }
+      doc.addEventListener('focusout', focusOutHandler);
     }
+    
     
     function resizeHandler(e) {
       if (focusedElement) {
         if (validatedHeight != window.innerHeight) {
           var diff =  window.innerHeight - validatedHeight;
           validatedHeight = window.innerHeight;
-          focusedElement.blur();
-        }
-      }
-    }
-    function focusInHandler(e) {
-      scrollTop = doc.body.scrollTop;
-      win.removeEventListener('scroll', scrollHandler);
-      if (matchesSelector(e.target, inputSelector)) {
-        fixedParent = getFixedParent(e.target);
-        if (focusedElement != e.target) {
-          focusedElement = e.target;
-          overflowContainer = getOverflowContainer(e.target);
-          if (fixedParent) {
-            // top = doc.body.scrollTop;
-            // fixedParent.style.position = 'absolute';
-            // fixedParent.style.top = top + 'px';
-            win.addEventListener('scroll', scrollHandler);
-            doc.addEventListener('focusout', focusOutHandler);
-          }
+          //focusedElement.blur();
         }
       }
     }
     
-    var focusOutTimeout = null;
+    function focusInHandler(e) {
+      if (matchesSelector(e.target, inputSelector)) {
+        if (!focusedElement) {
+          scrollTop = doc.body.scrollTop;
+          fixedParent = getFixedParent(e.target);
+          overflowContainer = getOverflowContainer(e.target);
+          overflowScrollTop = overflowContainer ? overflowContainer.scrollTop : 0;
+        }
+        focusedElement = e.target;
+        
+        if (fixedParent) {
+          win.removeEventListener('scroll', scrollHandler);
+          win.addEventListener('scroll', scrollHandler);
+        }
+      }
+    }
     
     function focusOutHandler(e) {
-      doc.removeEventListener('focusout', focusOutHandler);
-      win.removeEventListener('scroll', scrollHandler);
-      // win.clearTimeout(focusOutTimeout);
-      if (!fixedParent) return;
-      //focusOutTimeout = win.setTimeout(function() {
-      win.webkitRequestAnimationFrame(function() {
+      win.clearTimeout(focusOutTimeout);
+      focusOutTimeout = win.setTimeout(function() {
         var activeElement = doc.activeElement;
         if (!matchesSelector(activeElement, inputSelector) || !isChildOf(activeElement, fixedParent)) {
+          focusedElement = null;
           top = 0;
           fixedParent.style.top = "";
           fixedParent.style.position = "";
           if (overflowContainer) {
-            overflowContainer.style.height = "";
+            overflowContainer.style.minHeight = "";
+            overflowContainer.style.overflow = '';
             overflowContainer.scrollTop = overflowScrollTop;
             overflowContainer = null;
+            overflowScrollTop = 0;
           }
-          focusedElement = null;
+          fixedParent.style.top = '';
+          doc.removeEventListener('focusout', focusOutHandler);
+          win.removeEventListener('scroll', scrollHandler);
         }
-      });
-      //, 10);
+      }, 0);
     }
   
     doc.addEventListener('focusin', focusInHandler);
@@ -247,7 +234,8 @@
     }
     
     function focusOutHandler(e) {
-      win.setTimeout(function() {
+      win.clearTimeout(focusOutTimeout);
+      focusOutTimeout = win.setTimeout(function() {
         var activeElement = doc.activeElement;
         if (!matchesSelector(activeElement, inputSelector) || !isChildOf(activeElement, fixedParent)) {
           doc.body.style.WebkitTransform = '';
