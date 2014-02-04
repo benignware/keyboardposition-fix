@@ -19,8 +19,8 @@
     </copy>
     
     <java jar="${build.yuicompressor}" fork="true" failonerror="true">
-      <arg value="${basedir}/src/picker-fix.js"/>
-      <arg line="-o ${build.dir}/picker-fix.min.js"/>
+      <arg value="${basedir}/src/keyboardposition-fix.js"/>
+      <arg line="-o ${build.dir}/keyboardposition-fix.min.js"/>
     </java>
   
   </target>
